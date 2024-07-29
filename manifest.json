@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Coursera Auto Grade",
+  "description": "AUTO GRADE",
+  "version": "1.0.0",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "128": "img-128.jpg"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.coursera.org/*"],
+      "js": ["popup.js"]
+    }
+  ],
+  "permissions": ["activeTab", "scripting"]
+}
