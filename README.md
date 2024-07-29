@@ -12,8 +12,6 @@
    - Mở trang quản lý tiện ích của Chrome tại: `chrome://extensions/`.
    - Bật chế độ dành cho nhà phát triển (Developer mode) bằng cách gạt công tắc ở góc trên bên phải của trang.
 
-     ![Ảnh 1](/auto-grade-coursera/imageNoSee/a.png)
-
    - Nhấn vào nút **"Tải tiện ích đã giải nén"** (Load unpacked) ở góc trên bên trái của trang.
 
    - Chọn thư mục chứa tiện ích đã giải nén và nhấn **"Chọn thư mục"** (Select Folder).
