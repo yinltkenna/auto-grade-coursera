@@ -1,92 +1,115 @@
 document.addEventListener("DOMContentLoaded", () => {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs.length > 0) {
+  const inputField = document.getElementById("inputText");
+  const runCodeButton = document.getElementById("runCode");
+  const messageDiv = document.getElementById("message");
+  const contentDiv = document.getElementById("content");
+
+  checkCurrentPage();
+
+  runCodeButton.addEventListener("click", () => {
+    let inputText = inputField.value.trim();
+    if (!inputText) {
+      inputText = "Coursera Auto Grade By Yin";
+      inputField.value = inputText;
+    }
+
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs.length) return;
+
       try {
         const url = new URL(tabs[0].url);
-        console.log("Tab URL:", url.hostname);
+        if (url.hostname !== "www.coursera.org") return;
 
-        if (url.hostname === "www.coursera.org") {
-          document.getElementById("message").classList.add("hidden");
-          document.getElementById("content").classList.remove("hidden");
-          console.log(
-            "Content should be visible:",
-            !document.getElementById("content").classList.contains("hidden")
-          );
+        chrome.scripting.executeScript({
+          target: { tabId: tabs[0].id },
+          args: [inputText],
+          func: (textToInsert) => {
+            const formControlDivs = document.querySelectorAll(".cds-formControl-root.css-715a8f");
 
-          document.getElementById("runCode").addEventListener("click", () => {
-            const inputText = document.getElementById("inputText").value;
+            formControlDivs.forEach(formControl => {
+              let maxPoints = -1;
+              let bestInput = null;
 
-            chrome.scripting.executeScript({
-              target: { tabId: tabs[0].id },
-              func: (inputText) => {
-                function performActions(inputText) {
-                  for (let i = 1; i <= 12; i++) {
-                    for (let j = 1; j <= 12; j++) {
-                      for (let k = 1; k <= 12; k++) {
-                        let xpathInput = `//*[@id="main"]/div[1]/div[1]/div[2]/div/div[3]/div[${i}]/div[2]/div/div[${j}]/div/div[2]/div[${k}]/label/input`;
-                        let inputElement = document.evaluate(
-                          xpathInput,
-                          document,
-                          null,
-                          XPathResult.FIRST_ORDERED_NODE_TYPE,
-                          null
-                        ).singleNodeValue;
-                        if (inputElement) {
-                          inputElement.click();
-                        }
-                      }
+              const peerOptions = formControl.querySelectorAll(".peer-option-input");
+
+              peerOptions.forEach(peerOption => {
+                let span = peerOption.querySelector(".css-1rlln5c span");
+                if (span) {
+                  let text = span.textContent.trim();
+                  let match = text.match(/^(\d+) points?$/);
+                  if (match) {
+                    let points = parseInt(match[1], 10);
+                    if (points > maxPoints) {
+                      maxPoints = points;
+                      bestInput = peerOption.querySelector("input[type='radio'], input[type='checkbox']");
                     }
                   }
-
-                  function insertText(element, text) {
-                    element.click();
-                    element.focus();
-                    document.execCommand("insertText", false, text);
-                  }
-
-                  let xpathTextarea = `//*[@id="main"]/div[1]/div[1]/div[2]/div/div[3]/div[1]/div[2]/div/div[8]/div/textarea`;
-                  let textareaElement = document.evaluate(
-                    xpathTextarea,
-                    document,
-                    null,
-                    XPathResult.FIRST_ORDERED_NODE_TYPE,
-                    null
-                  ).singleNodeValue;
-                  if (textareaElement) {
-                    insertText(textareaElement, inputText);
-                  }
-
-                  setTimeout(() => {
-                    let xpathButton = `//*[@id="main"]/div[1]/div[1]/div[2]/div/div[5]/div[1]/button`;
-                    let buttonElement = document.evaluate(
-                      xpathButton,
-                      document,
-                      null,
-                      XPathResult.FIRST_ORDERED_NODE_TYPE,
-                      null
-                    ).singleNodeValue;
-                    if (buttonElement) {
-                      buttonElement.click();
-                    }
-                  }, 1000);
                 }
+              });
 
-                performActions(inputText);
-              },
-              args: [inputText],
+              if (bestInput) {
+                bestInput.click();
+              }
             });
-          });
-        } else {
-          document.getElementById("content").classList.add("hidden");
-          document.getElementById("message").classList.remove("hidden");
-        }
+
+            let textarea = document.querySelector("textarea[id^='cds-react-aria']");
+            if (!textarea) {
+              textarea = document.evaluate(
+                "//textarea[starts-with(@id, 'cds-react-aria')]",
+                document,
+                null,
+                XPathResult.FIRST_ORDERED_NODE_TYPE,
+                null
+              ).singleNodeValue;
+            }
+
+            if (textarea) {
+              textarea.value = textToInsert;
+              textarea.dispatchEvent(new Event("input", { bubbles: true }));
+              textarea.dispatchEvent(new Event("change", { bubbles: true }));
+              textarea.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "a" }));
+            }
+
+            setTimeout(() => {
+              let submitButton = document.evaluate(
+                "//*[@id='main']/div[1]/div[1]/div[2]/div/div[5]/div[1]/button",
+                document,
+                null,
+                XPathResult.FIRST_ORDERED_NODE_TYPE,
+                null
+              ).singleNodeValue;
+
+              if (submitButton) {
+                submitButton.click();
+
+                setTimeout(() => {
+                  if (document.contains(submitButton)) {
+                    submitButton.click();
+                  }
+                }, 2000);
+              }
+            }, 500);
+          },
+        });
       } catch (error) {
         console.error("Error processing URL:", error);
-        document.getElementById("message").textContent =
-          "An error occurred while processing the URL.";
-        document.getElementById("message").classList.remove("hidden");
-        document.getElementById("content").classList.add("hidden");
       }
-    }
+    });
   });
+
+  function checkCurrentPage() {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs.length) return;
+
+      try {
+        const url = new URL(tabs[0].url);
+        const isCoursera = url.hostname === "www.coursera.org";
+
+        messageDiv.style.display = isCoursera ? "none" : "block";
+        contentDiv.style.display = isCoursera ? "block" : "none";
+      } catch (error) {
+        console.error("Error checking URL:", error);
+      }
+    });
+  }
 });
