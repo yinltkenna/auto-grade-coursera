@@ -25,11 +25,13 @@ document.addEventListener("DOMContentLoaded", () => {
           args: [inputText],
           func: (textToInsert) => {
             const formControlDivs = document.querySelectorAll(".cds-formControl-root.css-715a8f");
+            let hasSelections = false;
+            let hasTextareas = false;
 
             formControlDivs.forEach(formControl => {
               let maxPoints = -1;
               let bestInput = null;
-
+              
               const peerOptions = formControl.querySelectorAll(".peer-option-input");
 
               peerOptions.forEach(peerOption => {
@@ -49,46 +51,51 @@ document.addEventListener("DOMContentLoaded", () => {
 
               if (bestInput) {
                 bestInput.click();
+                hasSelections = true;
               }
             });
-
-            let textarea = document.querySelector("textarea[id^='cds-react-aria']");
-            if (!textarea) {
-              textarea = document.evaluate(
+            
+            let textareas = document.querySelectorAll("textarea[id^='cds-react-aria']");
+            
+            if (textareas.length === 0) {
+              let textareasSnapshot = document.evaluate(
                 "//textarea[starts-with(@id, 'cds-react-aria')]",
                 document,
                 null,
-                XPathResult.FIRST_ORDERED_NODE_TYPE,
+                XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
                 null
-              ).singleNodeValue;
+              );
+              textareas = [];
+              for (let i = 0; i < textareasSnapshot.snapshotLength; i++) {
+                textareas.push(textareasSnapshot.snapshotItem(i));
+              }
             }
-
-            if (textarea) {
+            
+            textareas.forEach(textarea => {
               textarea.value = textToInsert;
               textarea.dispatchEvent(new Event("input", { bubbles: true }));
               textarea.dispatchEvent(new Event("change", { bubbles: true }));
               textarea.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "a" }));
+              hasTextareas = true;
+            });
+
+            if (hasSelections || hasTextareas) {
+              setTimeout(() => {
+                let submitButtons = document.querySelectorAll(
+                  "#main > div.rc-PeerItemPage.body-1-text > div.rc-SplitPeerReviewPage > div:nth-child(2) > div > div.rc-FormSubmit > div:nth-child(1) > button, " +
+                  "[id^='cds-react-aria'][id$='-panel-feedback'] div.rc-FormSubmit > div:nth-child(1) > button"
+                );
+                
+                submitButtons.forEach(button => {
+                  button.click();
+                  setTimeout(() => {
+                    if (document.contains(button)) {
+                      button.click();
+                    }
+                  }, 2000);
+                });
+              }, 500);
             }
-
-            setTimeout(() => {
-              let submitButton = document.evaluate(
-                "//*[@id='main']/div[1]/div[1]/div[2]/div/div[5]/div[1]/button",
-                document,
-                null,
-                XPathResult.FIRST_ORDERED_NODE_TYPE,
-                null
-              ).singleNodeValue;
-
-              if (submitButton) {
-                submitButton.click();
-
-                setTimeout(() => {
-                  if (document.contains(submitButton)) {
-                    submitButton.click();
-                  }
-                }, 2000);
-              }
-            }, 500);
           },
         });
       } catch (error) {
